@@ -1,130 +1,241 @@
+import re
 import os
 import spacy
-from nltk.tree import Tree
-import re
+# from graphviz import Digraph
 
-SENTS = ["Na verdade, é melhor compreender a história das ideias, principalmente ideias que emergiram da lógica matemática, uma disciplina obscura e cultual que primeiro se desenvolveu no século dezenove.",
-          "Como um cientista da computação comentou: “Se, em 1901, um talentoso e simpático estranho fosse chamado a pesquisar as ciências e nomeasse o ramo que seria o menos frutífero para o século seguinte, sua escolha poderia muito bem ser estabelecida na lógica matemática.” E ainda, isto teria provido a fundação para um campo que teria mais impacto no mundo moderno que qualquer outro.",
-          "A tese de Shannon surgiu quando Bush recomendou que ele tentasse descobrir tal teoria. “A matemática pode ser definida como o tópico no qual nós nunca raramente lido fora dos departamentos de filosofia.",
-          "Boole é muitas vezes descrito como um matemático, mas ele viu a si mesmo como um filósofo, seguindo os passos de Aristóteles.",
-          "Tentar improvisar no trabalho lógico de Aristóteles foi um movimento intelectual ousado."]
+def find_names(nent):
+    names = []
+    pattern = "<EM(.+?)>(.+?)</EM>"
+    rgx=re.compile(pattern)
+    identifiers = re.compile('"(.+?)"')
+    match = [ ((identifiers.findall(x[0]),x[1])) for x in rgx.findall(nent)]
+    for idx, x in enumerate(rgx.findall(nent)):
+        names.append((x[1],match[idx][0][1]))
+    return names
 
-NER = ["""Na verdade , é melhor compreender a história das ideias , principalmente ideias que emergiram da lógica matemática , uma disciplina obscura e cultual que primeiro se desenvolveu <EM ID="Artigo1-3" CATEG="TEMPO">no século dezenove</EM> .""",
-          """Como um cientista da computação comentou : “Se , <EM ID="Artigo1-7" CATEG="TEMPO">em 1901</EM> , um talentoso e simpático estranho fosse chamado a pesquisar as ciências e nomeasse o ramo que seria o menos frutífero para o século seguinte , sua escolha poderia muito bem ser estabelecida na lógica matemática .” E ainda , isto teria provido a fundação para um campo que teria mais impacto no mundo moderno que qualquer outro .""",
-          """A tese de Shannon surgiu quando <EM ID="Artigo1-48" CATEG="PESSOA">Bush</EM> recomendou que ele tentasse descobrir tal teoria . “A matemática pode ser definida como o tópico no qual nós nunca raramente lido fora dos departamentos de filosofia .""",
-          """Boole é muitas vezes descrito como um matemático , mas ele viu a si mesmo como um filósofo , seguindo os passos de <EM ID="Artigo1-72" CATEG="PESSOA">Aristóteles</EM> .""",
-          """Tentar improvisar no trabalho lógico de <EM ID="Artigo1-81" CATEG="PESSOA">Aristóteles</EM> foi um movimento intelectual ousado ."""]
+def find_triplets(sentence):
+    nlp = spacy.load("pt_core_news_sm")
+    doc = nlp(sentence)
+    # graph = Digraph('G', filename='sentence.gv', format='png', node_attr={'shape': 'plaintext'})
+    triplets = []
+    for d in doc:
+        triple = []
+        main_pos = ["NOUN", "PROPN", "VERB"]
+        if (d.dep_ == "nsubj" or d.dep_ == "nsubj:pass") and d.pos_ in main_pos:
+            if d.head.pos_ == "VERB" and d.head.pos_ in main_pos:
+                triple.append(d)
+                triple.append(d.head)
+                d2 = [d_ for d_ in doc if d_.head.i == d.head.i and d_ != d.head and d_ not in triple]
+                if d2 != [] and triple != [] and d2[0].pos_ in main_pos:
+                    triple.append(d2[0])
 
-def person_ner(stks, loc, pre, pos):
-    for l0, l1 in loc:
-        if pre != [] and pos != []:
-            # pre verbs and pos verbs exists
-            print(" ".join(stks[:l0])+" quem "+" ".join(stks[l1:-1])+"?")
-        elif pos != []:
-            # just pre verbs
-            vidx, v = pre[-1]
-            if type(vidx) == tuple:
-                vidx = vidx[0]
-            print("Quem"+" ".join(stks[:vidx]))
 
-        elif pre != []:
-            # just pos verbs
-            vidx, v = pos[0]
-            if type(vidx) == tuple:
-                vidx = vidx[0]
-            print("Quem"+" ".join(stks[vidx:]))
+            elif d.head.pos_ in main_pos:
+                triple.append(d)
+                triple.append(d.head)
+                d2 = [d_ for d_ in doc if d_.head.i == d.head.i and d_ != d.head and d_ not in triple and d_.pos_ == "VERB"]
+                if d2 != [] and triple != []:
+                    triple.append(d2[0])
 
+        triple = [x for _, x in sorted(zip([t.i for t in triple], triple))]
+        text = [tkn.text for tkn in triple]
+        if len(triple) == 3:
+            dependency = ["flat:name", "case", "nmod", "obj", "appos", "amod", "advmod", "acl:relcl", "obl", "conj", "xcomp"]
+            t_ids = [(t.i, t.i+1) for t in triple]
+            for tid, t in enumerate(triple):
+                c1 = [d_ for d_ in doc if d_.head == t and d_ not in triple  and d_.dep_ in dependency]
+                c2 = c1
+                while c2 != []:
+                    c2 = ([d_ for d_ in doc if d_ not in c1  and d_.head in c1 and d_.dep_ in dependency])
+                    c1 = c1 + c2
+
+                complements = c1
+                if complements != []:
+                    complements.append(t)
+                    limits = (min([c.i for c in complements]), max([c.i for c in complements])+1)
+
+                    ini, end = limits
+                    if tid < 2 and end > t_ids[tid+1][0]:
+                        end = t_ids[tid+1][0]
+                    if tid > 0 and ini <= t_ids[tid-1][1]:
+                        ini = t_ids[tid-1][1]
+
+                    while doc[ini].dep_ == "punct": ini = ini+1
+
+                    limits = (ini, end)
+                    t_ids[tid] = limits
+
+                    text[tid] = " ".join([doc[wi].text for wi in range(limits[0], limits[1])])
+
+            triplets.append(text)
+    return triplets
+
+def find_matching(mylist, pattern):
+    match = []
+    for i in range(len(mylist)):
+        if mylist[i:i+len(pattern)] == pattern:
+            match.append((i, i+len(pattern)))
+    if match != []:
+        return match[0] # to do: observe multiple references inside the phrase
+    else:
+        return None
+
+def qgen(name, model, a1, rel, a2, phr):
+    # print(name, model, a1, rel, a2)
+    question = ""
+    if model == "TEMPO":
+        if name in a1:
+            question = a1.replace(name, " qual período ")+" "+rel+" "+a2+"?"
+        elif name in rel:
+            question = a1+" "+rel.replace(name, " de que período ")+" "+a2+"?"
+        elif name in a2:
+            question = a1+" "+rel+" "+a2.replace(name, " em que época ")+"?"
         else:
-            # no verbs
-            print(" ".join(stks[:l0])+" quem "+" ".join(stks[l1:-1])+"?")
-
-def time_ner(stks, loc, pre, pos):
-    for l0, l1 in loc:
-        if "," in stks:
-            sign = [widx for widx, word in enumerate(stks) if "," in word]
-            if len(sign) == 1:
-                if sign[0] > l0:
-                    print("Quando "+" ".join(stks[:l0]))
-                if sign[0] > l1:
-                    print("Quando "+" ".join(stks[l1:]))
-            """else:
-                if sign[0] > l0:
-                    print("Quando "+" ".join(stks[:l0]))
-                if sign[-1] > l1:
-                    print("Quando "+" ".join(stks[:l0]))
-                if sign[0] > l1:
-                    print("Quando "+" ".join(stks[l1:]))
-            """
+            print("Model not found!")
+    elif model == "PESSOA":
+        if name in a1:
+            question = a1.replace(name, " quem ")+" "+rel+" "+a2+"?"
+        elif name in rel:
+            question = a1+" "+rel.replace(name, " quem ")+" "+a2+"?"
+        elif name in a2:
+            question = a1+" "+rel+" "+a2.replace(name, " quem ")+"?"
         else:
-            print("Quando "+" ".join(stks[:l0]))
-
-#def abstraction_ner(stks, loc, pre, pos):
-#    for l0, l1 in loc:
-        
-            
-def verbal_locutions(verbs, words):
-    verbal_connections = []
-    for vid, v_ in enumerate(verbs):
-        if vid != 0 and verbs[vid-1][0] == verbs[vid][0]-1:
-            if type(verbal_connections[-1][0]) == tuple:
-                verbal_connections[-1] = ( verbal_connections[-1][0]+(verbs[vid][0], ), verbal_connections[-1][1]+(verbs[vid][1], ) )
-            else:
-                verbal_connections[-1] = tuple(zip(verbal_connections[-1], verbs[vid]))
-            continue
-        verbal_connections.append(verbs[vid])
-    return verbal_connections
+            print("Model not found!")
+    elif model == "ORGANIZACAO":
+        if name in a1:
+            question = a1.replace(name, " qual organização")+" "+rel+" "+a2+"?"
+        elif name in rel:
+            question = a1+" "+rel.replace(name, " qual organização ")+" "+a2+"?"
+        elif name in a2:
+            question = a1+" "+rel+" "+a2.replace(name, " qual organização ")+"?"
+        else:
+            print("Model not found!")
+    elif model == "ABSTRACCAO":
+        if name in a1:
+            question = a1.replace(name, " o que ")+" "+rel+" "+a2+"?"
+        elif name in rel:
+            question = a1+" "+rel.replace(name, " que abstração ")+" "+a2+"?"
+        elif name in a2:
+            question = a1+" "+rel+" "+a2.replace(name, " de qual abstração ")+"?"
+        else:
+            print("Model not found!")
+    elif model == "LOCAL":
+        if name in a1:
+            question = a1.replace(name, " que local ")+" "+rel+" "+a2+"?"
+        elif name in rel:
+            question = a1+" "+rel.replace(name, " de qual lugar ")+" "+a2+"?"
+        elif name in a2:
+            question = a1+" "+rel+" "+a2.replace(name, " aonde ")+"?"
+        else:
+            print("Model not found!")
+    elif model == "VALOR":
+        if name in a1:
+            question = a1.replace(name, " qual valor ")+" "+rel+" "+a2+"?"
+        elif name in rel:
+            question = a1+" "+rel.replace(name, " de qual valor ")+" "+a2+"?"
+        elif name in a2:
+            question = a1+" "+rel+" "+a2.replace(name, " qual valor ")+"?"
+        else:
+            print("Model not found!")
+    elif model == "OBRA":
+        if name in a1:
+            question = a1.replace(name, " que obra ")+" "+rel+" "+a2+"?"
+        elif name in rel:
+            question = a1+" "+rel.replace(name, " que obra ")+" "+a2+"?"
+        elif name in a2:
+            question = a1+" "+rel+" "+a2.replace(name, " qual obra ")+"?"
+        else:
+            print("Model not found!")
+    else:
+        print("Model not found!")
+    if question != "":
+        question = question.strip()
+        question = question[0].upper()+question[1:]
+        return question
+    return None
 
 def main():
-    nlp = spacy.load("pt")
-    for s, n in zip(SENTS, NER):
-        pattern = "<EM(.+?)>(.+?)</EM>"
-        rgx=re.compile(pattern)
-        identifiers = re.compile('"(.+?)"')
+    documents = []
+    localdir = "./2NE/"
+    for d in os.listdir(localdir):
+        names = ""
+        phrase = ""
+        if "_Anotado.txt" in d:
+            with open(localdir+d, "r") as rdb:
+                names = rdb.read()
+            d_ = d.replace("_Anotado","")
+            with open(localdir+d_, "r") as rdb:
+                phrase = rdb.read()
 
-        match = [ ((identifiers.findall(x[0]),x[1])) for x in rgx.findall(n)]
+        if phrase != "":
+            documents.append((names, phrase))
+        # else:
+        #    print(d)
+    
+    entities = []
+    triplets = []
+    for nent, phr in documents:
+        triplets =  find_triplets(phr)
+        entities = find_names(nent)
+        if triplets != [] and entities != []:
+            try:
+                loc_a1, loc_rel, loc_a2 = zip(*[(find_matching(phr, a1), find_matching(phr, rel), find_matching(phr, a2)) for a1, rel, a2 in triplets])
+                for e, cle in entities:
+                    loc_e = find_matching(phr, e)
+                    st, nd = loc_e
+                    for a1, a2, a3 in zip(loc_a1, loc_rel, loc_a2):
+                        st1, nd1 = a1
+                        st2, nd2 = a2
+                        st3, nd3 = a3
+                        start_tri = 0
+                        end_tri = 0
+                        argument1 = ""
+                        relation = ""
+                        argument2 = ""
 
-        if match == []:
-            print("\n_________________\n")
-            continue
-        else:
-            print(match)
+                        if st1 < st2 and st1 < st3:
+                            start_tri = st1
+                            argument1 = phr[st1:nd1]
+                        elif st2 < st3:
+                            start_tri = st2
+                            argument1 = phr[st2:nd2]
+                        else:
+                            start_tri = st3
+                            argument1 = phr[st3:nd3]
 
-            doc = nlp(s)
-            words = [(w_.text , w_.tag_, w_.dep_) for w_ in doc]
-            loc = []
-            for typeof, name in match:
-                pre = []
-                pos = []
-                for l0, l1 in loc:
-                    for vidx, v_ in verbs:
-                        if type(vidx) == int:
-                            if vidx < l0:
-                                pre.append((vidx, v_))
-                            if vidx > l1:
-                                pos.append((vidx, v_))
-                verbs = []
-                ntks = name.split()
-                stks = [(w_.text) for w_ in doc]
-                loc = [(i, i+len(ntks)) for i in range(len(stks)) if stks[i:i+len(ntks)] == ntks]
-                verbs = [(wid, w_.text) for wid, w_ in enumerate(doc) if "|V|" in w_.tag_.upper()]
-                verbs = verbal_locutions(verbs, words)
-                if typeof[1].upper() == "PESSOA":
-                    person_ner(stks, loc, pre, pos)
-                if typeof[1].upper() == "TEMPO":
-                    time_ner(stks, loc, pre, pos)
-                if typeof[1].upper() == "ABSTRACCAO":
-                    abstraction_ner(stks, loc, pre, pos)
-                #if typeof[1].upper() == "TEMPO":
-                  
-                  
-            print("\n_________________\n")
-    #                 if pos == []:
-    #                     print(pre, pos)
-    #                     verb_ref = pre[-1]
-    #                     if type(verb_ref[0]) == int:
-    #                         print("quando "+ verb_ref[1]+" ".join(stks[:verb_ref[0]]))
-    #                     else:
-    #                         print("quando "+ " ".join(verb_ref[1])+" ".join(stks[:verb_ref[0][0]]))
+                        if st1 < st2 and st2 < st3:
+                            relation = phr[st2:nd2]
+                        elif st1 < st3:
+                            relation = phr[st1:nd1]
+                        else:
+                            relation = phr[st3:nd3]
 
-if __name__ == '__main__':
+                        if st3 > st1 and st3 > st2:
+                            end_tri = nd3
+                            argument2 = phr[st3:nd3]
+                        elif st2 > st1:
+                            end_tri = nd2
+                            argument2 = phr[st2:nd2]
+                        else:
+                            end_tri = nd1
+                            argument2 = phr[st1:nd1]
+                    if start_tri < st and end_tri > nd:
+                        question = qgen(e, cle, argument1, relation, argument2, phr)
+                        if question != None:
+                            print(phr)
+                            print("ENT : "+e+" | "+cle)
+                            print("ARG1 : "+argument1)
+                            print("REL : "+relation)
+                            print("ARG2 : "+argument2)
+                            print(question)
+            except Exception as e:
+                print(phr)
+                print("ERROR")
+                """
+                print("ENT : "+str(loc_e))
+                print("ARG1 : "+str(loc_a1))
+                print("REL : "+str(loc_rel))
+                print("ARG2 : "+str(loc_a2))
+                """ 
+if __name__ == "__main__":
     main()
