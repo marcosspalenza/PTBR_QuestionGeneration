@@ -14,7 +14,7 @@ Os testes foram realizados com [Python 3.6](https://python.org) e os frameworks 
 O documento de entrada é no formato _anotado_ por um _sistema NER_, assim como o exemplo abaixo:
 
 >
->O novo continente ( __<EM ID=_Cap4-229_ CATEG=_LOCAL_>América</EM>__ ) continha características étnicas , lingüísticas e culturais tão variadas quanto as dos povos que habitavam a __<EM ID=_Cap4-230_ CATEG=_LOCAL_>Europa</EM>__ naquele período .
+> O novo continente ( __``<EM ID=_Cap4-229_ CATEG=_LOCAL_>América</EM>``__ ) continha características étnicas , lingüísticas e culturais tão variadas quanto as dos povos que habitavam a __``<EM ID=_Cap4-230_ CATEG=_LOCAL_>Europa</EM>``__ naquele período .
 >
 
 ## Reconhecimento
