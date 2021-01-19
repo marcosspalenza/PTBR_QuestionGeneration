@@ -34,7 +34,7 @@ As regras são formulas posicionais das componentes. O código abaixo é um exem
 		if name in a1:
 			question = a1.replace(name, " quem ")+" "+rel+" "+a2+"?"
 
-O tipo de questão é para uma entidade _PESSOA_. O nome está na componente 1 da tripla (_A1, REL, A2_) e a formação da questão é realizada diretamente realizada com a substitução da entidade __PESSOA__ por __"Quem"__ em _A1_.
+O tipo de questão é para uma entidade _PESSOA_. O nome está na componente 1 da tripla (_A1, REL, A2_) e a formação da questão é realizada diretamente com a substitução da entidade __PESSOA__ por __"Quem"__ em _A1_.
 
 ## Referências
 PIROVANI, Juliana; SPALENZA, Marcos; OLIVEIRA, Elias. Geração Automática de Questões a partir do Reconhecimento de Entidades Nomeadas em Textos Didáticos. __Simpósio Brasileiro de Informática na Educação - SBIE__. p. 1147. 2017. [PDF](https://br-ie.org/pub/index.php/sbie/article/view/7643)
