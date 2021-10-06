@@ -36,5 +36,10 @@ As regras são formulas posicionais das componentes. O código abaixo é um exem
 
 O tipo de questão é para uma entidade _PESSOA_. O nome está na componente 1 da tripla (_A1, REL, A2_) e a formação da questão é realizada diretamente com a substitução da entidade __PESSOA__ por __"Quem"__ em _A1_.
 
+
+Quando necessária, a conversão do tempo verbal é dada através da busca no [Dicionário de Palavras Simples](http://www.nilc.icmc.usp.br/nilc/projects/unitex-pb/web/dicionarios.html).
+
 ## Referências
-PIROVANI, Juliana; SPALENZA, Marcos; OLIVEIRA, Elias. Geração Automática de Questões a partir do Reconhecimento de Entidades Nomeadas em Textos Didáticos. __Simpósio Brasileiro de Informática na Educação - SBIE__. p. 1147. 2017. [PDF](https://br-ie.org/pub/index.php/sbie/article/view/7643)
+OLIVEIRA, E.; SPALENZA, M. A. ; PIROVANI, J. P. C. __rAVA: A Robot for Virtual Support of Learning. In: Proceedings of the 20th International Conference on Intelligent Systems Design and Applications__. Online Event: Springer International Publishing, 2020. (ISDA 2020, v. 20), p. 1238-1247.
+
+PIROVANI, J. P. C.; SPALENZA, M. A.; OLIVEIRA, E. __Geração Automática de Questões a partir do Reconhecimento de Entidades Nomeadas em Textos Didáticos. Simpósio Brasileiro de Informática na Educação - SBIE__. p. 1147. 2017. [PDF](https://br-ie.org/pub/index.php/sbie/article/view/7643)
