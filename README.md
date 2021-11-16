@@ -4,9 +4,9 @@ A Geração de Questões (GQ) é dada pela extração factual e a conversão de 
 
 
 ## Requisitos
-Os testes foram realizados com [Python 3.6](https://python.org) e os frameworks utilizados são apresentados abaixo:
+Os testes foram realizados com [Python 3.8](https://python.org) e os frameworks utilizados são apresentados abaixo:
 
-- [SpaCy](https://spacy.io) v2.2.3
+- [SpaCy](https://spacy.io) v3.2
 
 
 
@@ -36,10 +36,11 @@ As regras são formulas posicionais das componentes. O código abaixo é um exem
 
 O tipo de questão é para uma entidade _PESSOA_. O nome está na componente 1 da tripla (_A1, REL, A2_) e a formação da questão é realizada diretamente com a substitução da entidade __PESSOA__ por __"Quem"__ em _A1_.
 
-
 Quando necessária, a conversão do tempo verbal é dada através da busca no [Dicionário de Palavras Simples](http://www.nilc.icmc.usp.br/nilc/projects/unitex-pb/web/dicionarios.html).
 
 ## Referências
-OLIVEIRA, E.; SPALENZA, M. A. ; PIROVANI, J. P. C. __rAVA: A Robot for Virtual Support of Learning. In: Proceedings of the 20th International Conference on Intelligent Systems Design and Applications__. Online Event: Springer International Publishing, 2020. (ISDA 2020, v. 20), p. 1238-1247.
+OLIVEIRA, E.; SPALENZA, M. A. ; PIROVANI, J. P. C. __rAVA: A Robot for Virtual Support of Learning. In: Proceedings of the 20th International Conference on Intelligent Systems Design and Applications__. Online Event: Springer International Publishing, 2020. (ISDA 2020, v. 20), p. 1238-1247. [Link](https://link.springer.com/chapter/10.1007%2F978-3-030-71187-0_115)
 
 PIROVANI, J. P. C.; SPALENZA, M. A.; OLIVEIRA, E. __Geração Automática de Questões a partir do Reconhecimento de Entidades Nomeadas em Textos Didáticos. Simpósio Brasileiro de Informática na Educação - SBIE__. p. 1147. 2017. [PDF](https://br-ie.org/pub/index.php/sbie/article/view/7643)
+
+PIROVANI, J. P. C.; ALVES, J. SPALENZA, M. A.; SILVA, W.; COLOMBO, C. S.; OLIVEIRA, E. __Adapting NER (CRF+LG) for Many Textual Genres. In: Proceedings of the Iberian Languages Evaluation Forum  (IberLEF - SEPLN 2019, v. 35)__. p. 421-433. Bilbao, Spain: CEUR-WS, 2019. [PDF](http://ceur-ws.org/Vol-2421/NER_Portuguese_paper_2.pdf)

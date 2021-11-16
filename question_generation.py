@@ -1,18 +1,46 @@
 import re
 import os
+import sys
+import nltk
 import spacy
+from argparse import ArgumentParser # arguments manager
 # from graphviz import Digraph
 
-def find_names(nent):
+"""
+Identify NER marks within each sentence
+
+"""
+# Model Harem Tags
+def find_names_HAREM(nent):
     names = []
     pattern = "<EM(.+?)>(.+?)</EM>"
-    rgx=re.compile(pattern)
-    identifiers = re.compile('"(.+?)"')
+    rgx = re.compile(pattern)
+    # identifiers = re.compile('"(.+?)"')
+    identifiers = re.compile("'(.+?)'")
     match = [ ((identifiers.findall(x[0]),x[1])) for x in rgx.findall(nent)]
     for idx, x in enumerate(rgx.findall(nent)):
         names.append((x[1],match[idx][0][1]))
     return names
 
+
+# Model CoNLL B-I-O
+def find_names_CoNLL(nent):
+    names = []
+    for sn in nent:
+        ent = sn.split(" ")
+        if len(ent) > 1 and ent[1] != "O":
+            if "B-" in ent[1]:
+                names.append((ent[0], ent[1]))
+            elif "I-" in ent[1]:
+                last_name, last_cat = names[-1]
+                names[-1] = ((last_name+" "+ent[0], last_cat))
+            else:
+                print("Exception : "+str(ent)+"\n") # exception
+    return names
+
+"""
+Extract relations using triplets: Arg1 + REL + Arg2
+"""
 def find_triplets(sentence):
     nlp = spacy.load("pt_core_news_sm")
     doc = nlp(sentence)
@@ -70,20 +98,26 @@ def find_triplets(sentence):
             triplets.append(text)
     return triplets
 
+"""
+Extract the segment indices on match (sentence location)
+"""
 def find_matching(mylist, pattern):
     match = []
     for i in range(len(mylist)):
         if mylist[i:i+len(pattern)] == pattern:
             match.append((i, i+len(pattern)))
     if match != []:
-        return match[0] # to do: observe multiple references inside the phrase
+        return match[0]
     else:
         return None
 
+"""
+Generate quetions using the NER models
+"""
 def qgen(name, model, a1, rel, a2, phr):
-    # print(name, model, a1, rel, a2)
+    print((name, model, a1, rel, a2))
     question = ""
-    if model == "TEMPO":
+    if "TME" in model: # "TEMPO"
         if name in a1:
             question = a1.replace(name, " qual período ")+" "+rel+" "+a2+"?"
         elif name in rel:
@@ -92,7 +126,7 @@ def qgen(name, model, a1, rel, a2, phr):
             question = a1+" "+rel+" "+a2.replace(name, " em que época ")+"?"
         else:
             print("Model not found!")
-    elif model == "PESSOA":
+    elif "PER" in model: # "PESSOA"
         if name in a1:
             question = a1.replace(name, " quem ")+" "+rel+" "+a2+"?"
         elif name in rel:
@@ -101,7 +135,7 @@ def qgen(name, model, a1, rel, a2, phr):
             question = a1+" "+rel+" "+a2.replace(name, " quem ")+"?"
         else:
             print("Model not found!")
-    elif model == "ORGANIZACAO":
+    elif "ORG" in model: # "ORGANIZACAO"
         if name in a1:
             question = a1.replace(name, " qual organização")+" "+rel+" "+a2+"?"
         elif name in rel:
@@ -110,7 +144,7 @@ def qgen(name, model, a1, rel, a2, phr):
             question = a1+" "+rel+" "+a2.replace(name, " qual organização ")+"?"
         else:
             print("Model not found!")
-    elif model == "ABSTRACCAO":
+    elif "MISC" in model: # "ABSTRACCAO"
         if name in a1:
             question = a1.replace(name, " o que ")+" "+rel+" "+a2+"?"
         elif name in rel:
@@ -119,7 +153,7 @@ def qgen(name, model, a1, rel, a2, phr):
             question = a1+" "+rel+" "+a2.replace(name, " de qual abstração ")+"?"
         else:
             print("Model not found!")
-    elif model == "LOCAL":
+    elif "PLC" in model: # "LOCAL"
         if name in a1:
             question = a1.replace(name, " que local ")+" "+rel+" "+a2+"?"
         elif name in rel:
@@ -128,7 +162,7 @@ def qgen(name, model, a1, rel, a2, phr):
             question = a1+" "+rel+" "+a2.replace(name, " aonde ")+"?"
         else:
             print("Model not found!")
-    elif model == "VALOR":
+    elif "VAL" in model: # "VALOR"
         if name in a1:
             question = a1.replace(name, " qual valor ")+" "+rel+" "+a2+"?"
         elif name in rel:
@@ -137,7 +171,7 @@ def qgen(name, model, a1, rel, a2, phr):
             question = a1+" "+rel+" "+a2.replace(name, " qual valor ")+"?"
         else:
             print("Model not found!")
-    elif model == "OBRA":
+    elif "OBR" in model: # "OBRA"
         if name in a1:
             question = a1.replace(name, " que obra ")+" "+rel+" "+a2+"?"
         elif name in rel:
@@ -154,29 +188,41 @@ def qgen(name, model, a1, rel, a2, phr):
         return question
     return None
 
-def main():
+"""
+Load NER pairs (plain / marked) sentences
+"""
+def load_NER(in_path, out_put):
     documents = []
-    localdir = "./2NE/"
-    for d in os.listdir(localdir):
+    for d in os.listdir(in_path):
         names = ""
         phrase = ""
-        if "_Anotado.txt" in d:
-            with open(localdir+d, "r") as rdb:
-                names = rdb.read()
-            d_ = d.replace("_Anotado","")
-            with open(localdir+d_, "r") as rdb:
-                phrase = rdb.read()
+        with open(out_put+d, "r") as rdb:
+            names = [s_ for s_ in rdb.read().split("\n") if s_ != ""]
+        
+        with open(in_path+d, "r") as rdb:
+            phrase = " ".join([s_ for s_ in rdb.read().split("\n") if s_ != ""])
 
         if phrase != "":
             documents.append((names, phrase))
-        # else:
-        #    print(d)
-    
+    return documents
+
+
+def main():
+    parser = ArgumentParser(usage="%(prog)s [args] <datasetdir>",  description="Question Generation")
+    parser.add_argument("-i", "--input", dest="data_input", default="IBERLEF_IN/", help="Input path name. Default 'input/' .")
+    parser.add_argument("-o", "--output", dest="data_output", default="IBERLEF_OUT/", help="Output path name. Default 'output/' .")
+    args = parser.parse_args()
+
+    documents = []
     entities = []
     triplets = []
+
+    documents = load_NER(args.data_input, args.data_output)
+
+    out_ = 0
     for nent, phr in documents:
         triplets =  find_triplets(phr)
-        entities = find_names(nent)
+        entities = find_names_CoNLL(nent)
         if triplets != [] and entities != []:
             try:
                 loc_a1, loc_rel, loc_a2 = zip(*[(find_matching(phr, a1), find_matching(phr, rel), find_matching(phr, a2)) for a1, rel, a2 in triplets])
@@ -219,23 +265,14 @@ def main():
                         else:
                             end_tri = nd1
                             argument2 = phr[st1:nd1]
-                    if start_tri < st and end_tri > nd:
-                        question = qgen(e, cle, argument1, relation, argument2, phr)
-                        if question != None:
-                            print(phr)
-                            print("ENT : "+e+" | "+cle)
-                            print("ARG1 : "+argument1)
-                            print("REL : "+relation)
-                            print("ARG2 : "+argument2)
-                            print(question)
+
+                    question = qgen(e, cle, argument1, relation, argument2, phr)
+                    if question != None:
+                        with open("d"+str(out_)+"_questions.txt", "a") as wtr:
+                            wtr.write("-"+phr+" \n -"+question+"\n\n")
+                out_ =+ 1
             except Exception as e:
-                print(phr)
-                print("ERROR")
-                """
-                print("ENT : "+str(loc_e))
-                print("ARG1 : "+str(loc_a1))
-                print("REL : "+str(loc_rel))
-                print("ARG2 : "+str(loc_a2))
-                """ 
+                print(e)
+
 if __name__ == "__main__":
     main()
